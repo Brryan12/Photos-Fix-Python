@@ -105,10 +105,15 @@ Si aparece tu teléfono en la lista (con su ID de serie), ya estás listo — no
 Si tienes **más de un dispositivo conectado**, usa `-s ID_DE_SERIE` en todos los comandos para especificar cuál.
 
 ### Uso básico
+**Almacenamiento interno:**
 ```
 python transferir_con_fechas.py --serial TU_ID "C:\ruta\local\DCIM=/sdcard/DCIM"
 ```
-Puedes pasar varias carpetas de una vez, separadas por espacio, cada una en formato `origen=destino`.
+**Tarjeta SD** (reemplaza `0643-E789` por el identificador real de tu SD, ver sección C más abajo):
+```
+python transferir_con_fechas.py --serial TU_ID "C:\ruta\local\DCIM=/storage/0643-E789/DCIM"
+```
+Puedes pasar varias carpetas de una vez, separadas por espacio, cada una en formato `origen=destino` — y puedes mezclar destinos internos y de SD en la misma llamada si quieres.
 
 ### Banderas importantes
 | Bandera | Para qué sirve |
@@ -132,8 +137,14 @@ En estas carpetas, la fecha de **modificación** no es la real (refleja cuándo 
 ```
 
 Y al transferir, usa la bandera `--usar-creacion`:
+
+**Almacenamiento interno:**
 ```
 python transferir_con_fechas.py --serial TU_ID --usar-creacion "C:\ruta\InstaPrime=/sdcard/InstaPrime"
+```
+**Tarjeta SD:**
+```
+python transferir_con_fechas.py --serial TU_ID --usar-creacion "C:\ruta\InstaPrime=/storage/0643-E789/InstaPrime"
 ```
 
 ### B) `adb push` duplica la carpeta si el destino ya existe
@@ -159,7 +170,18 @@ adb -s TU_ID shell ls /storage
 python transferir_con_fechas.py --serial TU_ID --usar-creacion "C:\ruta\local\Carpeta=/storage/0643-E789/Pictures"
 ```
 
-**Paso 3 — Fuerza el reescaneo** (ver sección siguiente).
+**Paso 3 — Fuerza el reescaneo** 
+
+Para una carpeta específica:
+
+**Almacenamiento interno:**
+```
+adb -s TU_ID shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d "file:///sdcard/Pictures"
+```
+**Tarjeta SD:**
+```
+adb -s TU_ID shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d "file:///storage/0643-E789/Pictures"
+```
 
 ### D) Pasar archivos ZIP (sin descomprimir)
 
@@ -183,26 +205,41 @@ Después de copiar, Android no siempre se entera automáticamente de los archivo
 
 **Opción rápida:** reinicia el teléfono — vuelve a escanear todo el almacenamiento al encender.
 
-**Sin reiniciar,** fuerza el escaneo por comando:
+**Sin reiniciar,** fuerza el escaneo completo por comando (aplica a todo el almacenamiento, interno y SD, en un solo comando):
 ```
 adb -s TU_ID shell content call --uri content://media/external/file --method scan_volume --arg external
 ```
 O solo de una carpeta específica:
+**Almacenamiento interno:**
 ```
 adb -s TU_ID shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d "file:///sdcard/Pictures"
+```
+**Tarjeta SD:**
+```
+adb -s TU_ID shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d "file:///storage/0643-E789/Pictures"
 ```
 
 ### Caso especial: Samsung Galaxy (One UI reciente, ej. A56)
 
 En modelos recientes de Samsung, el menú "Almacenamiten de medios" para borrar caché ya no está disponible directamente por razones de seguridad de One UI. Si ya transferiste los archivos y las fechas están bien pero la Galería sigue sin mostrarlas bien, se puede forzar desde la terminal:
 
+**Almacenamiento interno:**
 ```
 adb -s TU_ID shell
 cd /sdcard/DCIM/
 touch -a *
 find . -type f -exec touch -a {} +
+exit
 ```
-(esto iguala la fecha de "último acceso" a la de "modificación" de cada archivo, sin necesitar tocar cada uno individualmente)
+**Tarjeta SD:**
+```
+adb -s TU_ID shell
+cd /storage/0643-E789/DCIM/
+touch -a *
+find . -type f -exec touch -a {} +
+exit
+```
+(`find ... -exec touch -a {} +` recorre la carpeta y todas sus subcarpetas, igualando la fecha de "último acceso" a la de modificación de cada archivo, uno por uno)
 
 Luego, en el teléfono:
 1. Ajustes > Apps > Galería > Almacenamiento > **Borrar caché** > **Forzar detención**.
